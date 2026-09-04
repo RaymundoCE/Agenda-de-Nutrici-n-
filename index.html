@@ -373,7 +373,11 @@ async function apiCall(extraParams){
 const storage = {
   async get(key){
     const r = await apiCall({ action: 'get', key });
-    if (!r.found) throw new Error('not-found');
+    if (!r.found){
+      const err = new Error('not-found');
+      err.code = 'not-found';
+      throw err;
+    }
     return { key, value: r.value, shared: true };
   },
   async set(key, value){
@@ -421,6 +425,7 @@ async function loadConfig(){
     const r = await storage.get(KEY_CONFIG);
     config = JSON.parse(r.value);
   }catch(e){
+    if (e.code !== 'not-found') throw e; // fallo de red real: no tocar los datos remotos
     config = { nutriologos: [
       { id:'n1', nombre:'Nutrióloga 1' },
       { id:'n2', nombre:'Nutriólogo 2' }
@@ -438,6 +443,7 @@ async function loadDays(){
     const r = await storage.get(KEY_DAYS);
     days = JSON.parse(r.value);
   }catch(e){
+    if (e.code !== 'not-found') throw e; // fallo de red real: no tocar los datos remotos
     days = [];
     await storage.set(KEY_DAYS, JSON.stringify(days));
   }
