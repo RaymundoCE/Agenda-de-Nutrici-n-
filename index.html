@@ -438,6 +438,16 @@ async function saveConfig(){
   await storage.set(KEY_CONFIG, JSON.stringify(config));
 }
 
+async function refreshConfig(){
+  try{
+    const r = await storage.get(KEY_CONFIG);
+    config = JSON.parse(r.value);
+  }catch(e){
+    if (e.code !== 'not-found') throw e;
+    // si de verdad no existe todavía, dejamos el config en memoria como está
+  }
+}
+
 async function loadDays(){
   try{
     const r = await storage.get(KEY_DAYS);
@@ -452,6 +462,16 @@ async function loadDays(){
 
 async function saveDays(){
   await storage.set(KEY_DAYS, JSON.stringify(days));
+}
+
+async function refreshDays(){
+  try{
+    const r = await storage.get(KEY_DAYS);
+    days = JSON.parse(r.value);
+    days.sort((a,b)=> a.date.localeCompare(b.date));
+  }catch(e){
+    if (e.code !== 'not-found') throw e;
+  }
 }
 
 async function loadBookingsFor(date){
@@ -840,6 +860,7 @@ async function sha256Hex(str){
 }
 
 async function promptRoleAuth(role){
+  await refreshConfig(); // nunca confiar en una copia vieja para decidir si ya existe contraseña
   const root = document.getElementById('modalRoot');
   const hashField = role === 'admin' ? 'adminPasswordHash' : 'nutriPasswordHash';
   const hasPassword = !!(config[hashField]);
@@ -872,6 +893,12 @@ async function promptRoleAuth(role){
       } else {
         const pass2 = document.getElementById('authPass2').value;
         if (!pass || pass !== pass2){
+          document.getElementById('authErr').style.display = 'block';
+          return;
+        }
+        await refreshConfig(); // por si alguien más la creó mientras se llenaba el formulario
+        if (config[hashField]){
+          document.getElementById('authErr').textContent = 'Alguien más acaba de configurar esta contraseña. Cierra esta ventana e ingresa con ella.';
           document.getElementById('authErr').style.display = 'block';
           return;
         }
@@ -914,6 +941,7 @@ document.getElementById('changeAdminPassBtn').addEventListener('click', async ()
     return;
   }
   try{
+    await refreshConfig();
     config.adminPasswordHash = await sha256Hex(p1);
     await saveConfig();
     document.getElementById('newAdminPass').value = '';
@@ -939,6 +967,7 @@ document.getElementById('changeNutriPassBtn').addEventListener('click', async ()
     return;
   }
   try{
+    await refreshConfig();
     config.nutriPasswordHash = await sha256Hex(p1);
     await saveConfig();
     document.getElementById('newNutriPass').value = '';
@@ -1041,10 +1070,11 @@ function renderAdmin(){
     btn.addEventListener('click', async () => {
       const nid = btn.dataset.saveNid;
       const input = nutriRows.querySelector(`.nutriNameInput[data-nid="${nid}"]`);
-      const n = config.nutriologos.find(x => x.id === nid);
-      const previous = n.nombre;
-      n.nombre = input.value.trim() || n.nombre;
+      const newName = input.value.trim();
       try{
+        await refreshConfig();
+        const n = config.nutriologos.find(x => x.id === nid);
+        n.nombre = newName || n.nombre;
         await saveConfig();
         populateExternalNutriSelect();
         populateNutriSelectWho();
@@ -1052,7 +1082,6 @@ function renderAdmin(){
         btn.textContent = 'Guardado ✓';
         setTimeout(() => { btn.textContent = 'Guardar nombre'; }, 1500);
       }catch(e){
-        n.nombre = previous;
         btn.textContent = 'Error, reintenta';
         setTimeout(() => { btn.textContent = 'Guardar nombre'; }, 2000);
       }
@@ -1080,6 +1109,7 @@ function renderAdmin(){
     listDiv.querySelectorAll('[data-remove-day]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const date = btn.dataset.removeDay;
+        await refreshDays();
         days = days.filter(d => d.date !== date);
         await saveDays();
         if (selectedDate === date) selectedDate = null;
@@ -1095,6 +1125,7 @@ document.getElementById('addDayBtn').addEventListener('click', async () => {
   if (!date) return;
   const checked = Array.from(document.querySelectorAll('.newDayNutri:checked')).map(c => c.value);
   if (checked.length === 0) return;
+  await refreshDays();
   const existingIdx = days.findIndex(d => d.date === date);
   if (existingIdx >= 0){
     days[existingIdx].nutriologos = checked;
