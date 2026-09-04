@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Agenda de Nutrición</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #EEE8DA;
+  --surface: #FBF9F3;
+  --ink: #24352A;
+  --ink-soft: #5B6B5F;
+  --line: #D9D0BC;
+  --accent: #8A6B2E;
+  --accent-soft: #EADFC0;
+  --busy: #A85A54;
+  --busy-bg: #F3E3DF;
+  --break: #C7BFA9;
+  --ok: #4C7A57;
+  --ok-soft: #DCEBDF;
+  font-size: 16px;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter', system-ui, sans-serif;
+  line-height:1.45;
+}
+.wrap{
+  max-width:920px;
+  margin:0 auto;
+  padding:32px 20px 80px;
+}
+header.page{
+  margin-bottom:28px;
+}
+h1{
+  font-family:'Fraunces', Georgia, serif;
+  font-weight:500;
+  font-size:2.1rem;
+  margin:0 0 6px;
+  letter-spacing:-0.01em;
+}
+.sub{
+  color:var(--ink-soft);
+  font-size:0.98rem;
+  max-width:56ch;
+}
+.share-note{
+  margin-top:10px;
+  font-size:0.8rem;
+  color:var(--ink-soft);
+  border-left:2px solid var(--line);
+  padding-left:10px;
+}
+
+/* Day strip */
+.daystrip{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding:4px 2px 14px;
+  margin-bottom:6px;
+  border-bottom:1px solid var(--line);
+}
+.day-chip{
+  flex:0 0 auto;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px 16px;
+  cursor:pointer;
+  text-align:left;
+  font-family:'Inter';
+  color:var(--ink);
+  min-width:118px;
+}
+.day-chip .d1{font-size:0.72rem; color:var(--ink-soft); text-transform:capitalize;}
+.day-chip .d2{font-family:'Fraunces'; font-size:1.15rem; font-weight:500;}
+.day-chip .d3{font-size:0.72rem; color:var(--accent); margin-top:2px;}
+.day-chip.active{
+  border-color:var(--accent);
+  background:var(--accent-soft);
+}
+.day-chip:hover{border-color:var(--ink-soft);}
+
+/* empty state */
+.empty{
+  padding:36px 20px;
+  text-align:center;
+  color:var(--ink-soft);
+  border:1px dashed var(--line);
+  border-radius:10px;
+  margin-top:16px;
+}
+
+/* Agenda columns */
+.agenda{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:26px;
+  margin-top:22px;
+}
+@media (max-width:640px){ .agenda{grid-template-columns:1fr;} }
+
+.nutri-col h2{
+  font-family:'Fraunces';
+  font-weight:500;
+  font-size:1.2rem;
+  margin:0 0 10px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--line);
+}
+.slot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 4px;
+  border-bottom:1px solid var(--line);
+  font-size:0.92rem;
+}
+.slot .time{
+  font-variant-numeric:tabular-nums;
+  color:var(--ink-soft);
+  width:52px;
+  flex:0 0 auto;
+}
+.slot .status{
+  flex:1;
+}
+.slot.available .status{color:var(--ink);}
+.slot.break{color:var(--break);}
+.slot.break .status{font-style:italic;}
+.slot.busy .status{color:var(--busy);}
+.slot .who{font-size:0.82rem; color:var(--ink-soft); display:block;}
+.slot .att-tag{font-size:0.74rem; font-style:normal;}
+.slot .att-tag.ok{color:var(--ok);}
+.slot .att-tag.no{color:var(--busy);}
+
+button{
+  font-family:'Inter';
+  border:none;
+  cursor:pointer;
+}
+.btn-book{
+  background:var(--ink);
+  color:var(--surface);
+  padding:6px 12px;
+  border-radius:7px;
+  font-size:0.82rem;
+}
+.btn-book:hover{background:var(--accent);}
+.btn-cancel{
+  background:none;
+  color:var(--busy);
+  font-size:0.78rem;
+  text-decoration:underline;
+  padding:0;
+}
+
+/* Modal */
+.overlay{
+  position:fixed; inset:0;
+  background:rgba(36,53,42,0.35);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  z-index:20;
+}
+.modal{
+  background:var(--surface);
+  border-radius:12px;
+  padding:24px;
+  width:100%;
+  max-width:380px;
+  border:1px solid var(--line);
+}
+.modal h3{
+  font-family:'Fraunces';
+  font-weight:500;
+  margin:0 0 4px;
+  font-size:1.15rem;
+}
+.modal .meta{color:var(--ink-soft); font-size:0.85rem; margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:0.8rem; color:var(--ink-soft); margin-bottom:4px;}
+.field input, .field select{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  font-family:'Inter';
+  font-size:0.92rem;
+  background:#fff;
+}
+.modal-actions{display:flex; gap:8px; margin-top:18px;}
+.modal-actions button{flex:1; padding:9px; border-radius:7px; font-size:0.88rem;}
+.btn-confirm{background:var(--ink); color:var(--surface);}
+.btn-confirm:hover{background:var(--accent);}
+.btn-secondary{background:none; border:1px solid var(--line) !important; color:var(--ink);}
+.error-text{color:var(--busy); font-size:0.8rem; margin-top:8px; display:none;}
+.success-text{color:var(--ok); font-size:0.8rem; margin-top:8px; display:none;}
+
+/* External consultorio card */
+.external-card{
+  margin-top:34px;
+  padding:20px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.external-card h2{
+  font-family:'Fraunces';
+  font-weight:500;
+  font-size:1.15rem;
+  margin:0 0 4px;
+}
+.external-card p.desc{color:var(--ink-soft); font-size:0.88rem; margin:0 0 16px; max-width:60ch;}
+.ext-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+@media (max-width:640px){ .ext-grid{grid-template-columns:1fr;} }
+
+/* Role toggles */
+.role-toggles{
+  margin-top:40px;
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.role-toggle{
+  font-size:0.82rem;
+  color:var(--ink-soft);
+  text-decoration:underline;
+  background:none;
+  padding:0;
+}
+
+/* Admin / Nutri panels */
+.panel-box{
+  margin-top:16px;
+  border-top:1px solid var(--line);
+  padding-top:20px;
+  display:none;
+}
+.panel-box.open{display:block;}
+.panel-box h3{font-family:'Fraunces'; font-weight:500; font-size:1.05rem; margin:18px 0 10px;}
+.panel-box h3:first-child{margin-top:0;}
+.admin-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
+.admin-row input[type=date], .admin-row input[type=time]{padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:'Inter';}
+.admin-row select{padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:'Inter';}
+.admin-row label.chk{font-size:0.85rem; display:flex; align-items:center; gap:5px;}
+.admin-row input[type=text]{padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:'Inter'; width:170px;}
+.mini-btn{padding:7px 12px; border-radius:7px; background:var(--ink); color:var(--surface); font-size:0.82rem;}
+.mini-btn.danger{background:none; color:var(--busy); text-decoration:underline;}
+.day-list-item{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:7px 0; border-bottom:1px solid var(--line); font-size:0.88rem;
+}
+.nutri-list-item{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:0.9rem; flex-wrap:wrap;
+}
+.nutri-list-item .who-block{flex:1; min-width:200px;}
+.nutri-list-item .who-block .nm{font-weight:500;}
+.nutri-list-item .who-block .sub2{font-size:0.78rem; color:var(--ink-soft);}
+.tag{font-size:0.7rem; padding:2px 7px; border-radius:20px; background:var(--accent-soft); color:var(--accent);}
+.att-buttons{display:flex; gap:6px;}
+.btn-att{padding:6px 10px; border-radius:7px; font-size:0.78rem; background:none; border:1px solid var(--line) !important;}
+.btn-att.active-ok{background:var(--ok-soft); border-color:var(--ok) !important; color:var(--ok);}
+.btn-att.active-no{background:var(--busy-bg); border-color:var(--busy) !important; color:var(--busy);}
+.panel-note{font-size:0.82rem; color:var(--ink-soft); margin-bottom:10px;}
+.loading{color:var(--ink-soft); font-size:0.9rem; padding:20px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>Agenda de nutrición</h1>
+    <p class="sub">Reserva tu espacio con Nutrición sin tener que preguntar disponibilidad. Cada consulta dura 30 minutos.</p>
+    <p class="share-note">Esta agenda es compartida: las personas que abran este enlace pueden ver los mismos horarios y reservas.</p>
+  </header>
+
+  <div id="app"><div class="loading">Cargando agenda…</div></div>
+
+  <div class="external-card">
+    <h2>¿Vas a ir directo al consultorio?</h2>
+    <p class="desc">Si prefieres agendar tu consulta directamente con el nutriólogo fuera de las jornadas en el corporativo, regístrala aquí para que quede contemplada en el conteo del mes.</p>
+    <div class="ext-grid">
+      <div class="field"><label>Nutriólogo</label><select id="extNutri"></select></div>
+      <div class="field"><label>Fecha</label><input id="extFecha" type="date"></div>
+      <div class="field"><label>Hora</label><input id="extHora" type="time"></div>
+      <div class="field"><label>Nombre completo</label><input id="extNombre" type="text" placeholder="Tu nombre"></div>
+      <div class="field"><label>Área / departamento</label><input id="extArea" type="text" placeholder="Ej. Sistemas"></div>
+      <div class="field"><label>Correo electrónico</label><input id="extCorreo" type="email" placeholder="tucorreo@empresa.com"></div>
+    </div>
+    <div class="error-text" id="extErr"></div>
+    <div class="success-text" id="extOk">Registrado. Gracias por avisarnos.</div>
+    <div style="margin-top:14px;"><button class="mini-btn" id="extSubmit">Registrar cita</button></div>
+  </div>
+
+  <div class="role-toggles" id="roleToggles">
+    <button class="role-toggle" id="nutriToggle">Acceso nutriólogos</button>
+    <button class="role-toggle" id="adminToggle">Panel de administración</button>
+  </div>
+
+  <div class="panel-box" id="nutriPanel">
+    <h3>Vista de nutriólogos</h3>
+    <p class="panel-note">Aquí puedes ver tus pacientes del día y marcar si asistieron. No puedes editar el calendario ni exportar datos desde aquí.</p>
+    <div class="admin-row">
+      <select id="nutriSelectWho"></select>
+      <input type="date" id="nutriSelectDate">
+    </div>
+    <div id="nutriListArea"></div>
+  </div>
+
+  <div class="panel-box" id="adminPanel">
+    <h3>Seguridad</h3>
+    <div class="admin-row">
+      <input type="password" id="newAdminPass" placeholder="Nueva contraseña de administrador">
+      <input type="password" id="newAdminPass2" placeholder="Confirmar">
+      <button class="mini-btn" id="changeAdminPassBtn">Guardar</button>
+    </div>
+    <div class="admin-row">
+      <input type="password" id="newNutriPass" placeholder="Nueva contraseña de nutriólogos">
+      <input type="password" id="newNutriPass2" placeholder="Confirmar">
+      <button class="mini-btn" id="changeNutriPassBtn">Guardar</button>
+    </div>
+    <div class="error-text" id="passChangeMsg"></div>
+
+    <h3>Nutriólogos</h3>
+    <div id="nutriEditRows"></div>
+
+    <h3>Días de consulta</h3>
+    <div class="admin-row">
+      <input type="date" id="newDayDate">
+      <span id="newDayChecks"></span>
+      <button class="mini-btn" id="addDayBtn">Agregar día</button>
+    </div>
+    <div id="dayListAdmin"></div>
+
+    <h3>Exportar para conciliación</h3>
+    <p class="panel-note">Incluye citas del corporativo y de consultorio externo, con el estatus de asistencia validado por cada nutriólogo.</p>
+    <div class="admin-row">
+      <label style="font-size:0.82rem; color:var(--ink-soft);">Desde <input type="date" id="exportFrom"></label>
+      <label style="font-size:0.82rem; color:var(--ink-soft);">Hasta <input type="date" id="exportTo"></label>
+      <button class="mini-btn" id="exportBtn">Descargar CSV</button>
+    </div>
+    <div class="error-text" id="exportMsg"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+// ==== CONEXIÓN A LA BASE DE DATOS (Google Sheets + Apps Script) ====
+// Pega aquí la URL que termina en /exec después de implementar el script.
+const API_URL = "https://script.google.com/macros/s/AKfycbz04CpNYWJZj_bN_voM05Vi4Mlm7viSzjvZDpJdtxbg8Rb_JXrD0L-vURYfUntxFD6X/exec";
+
+const KEY_CONFIG = 'config';
+const KEY_DAYS = 'days';
+const bookingsKey = (date) => `bookings:${date}`;
+const externasKey = (monthKey) => `externas:${monthKey}`;
+
+async function apiCall(extraParams){
+  const qs = new URLSearchParams({ _ts: Date.now(), ...extraParams }).toString();
+  const res = await fetch(`${API_URL}?${qs}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('network-error');
+  return res.json();
+}
+
+const storage = {
+  async get(key){
+    const r = await apiCall({ action: 'get', key });
+    if (!r.found) throw new Error('not-found');
+    return { key, value: r.value, shared: true };
+  },
+  async set(key, value){
+    await apiCall({ action: 'set', key, value });
+    return { key, value, shared: true };
+  },
+  async delete(key){
+    await apiCall({ action: 'delete', key });
+    return { key, deleted: true, shared: true };
+  },
+  async list(prefix){
+    const r = await apiCall({ action: 'list', prefix: prefix || '' });
+    return { keys: r.keys, prefix, shared: true };
+  }
+};
+
+let config = null;
+let days = [];
+let selectedDate = null;
+let bookingsCache = {}; // date -> {slotKey: {nombre, area, correo, asistencia}}
+let externasCache = {}; // monthKey -> {id: {fecha, hora, nutriologoId, nombre, area, correo, asistencia}}
+let isAdmin = false;
+let isNutri = false;
+
+const params = new URLSearchParams(location.search);
+const rolParam = params.get('rol');
+
+const SLOT_TIMES = [];
+(function buildSlots(){
+  let h = 8, m = 30;
+  while (h < 17 || (h === 17 && m === 0)){
+    if (h === 17 && m === 0) break;
+    SLOT_TIMES.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    m += 30;
+    if (m === 60){ m = 0; h += 1; }
+    if (h === 17 && m === 0) break;
+  }
+})();
+const BREAK_TIMES = ['14:00','14:30'];
+
+function slotKeyOf(nutriId, time){ return `${nutriId}_${time.replace(':','')}`; }
+
+async function loadConfig(){
+  try{
+    const r = await storage.get(KEY_CONFIG);
+    config = JSON.parse(r.value);
+  }catch(e){
+    config = { nutriologos: [
+      { id:'n1', nombre:'Nutrióloga 1' },
+      { id:'n2', nombre:'Nutriólogo 2' }
+    ]};
+    await storage.set(KEY_CONFIG, JSON.stringify(config));
+  }
+}
+
+async function saveConfig(){
+  await storage.set(KEY_CONFIG, JSON.stringify(config));
+}
+
+async function loadDays(){
+  try{
+    const r = await storage.get(KEY_DAYS);
+    days = JSON.parse(r.value);
+  }catch(e){
+    days = [];
+    await storage.set(KEY_DAYS, JSON.stringify(days));
+  }
+  days.sort((a,b)=> a.date.localeCompare(b.date));
+}
+
+async function saveDays(){
+  await storage.set(KEY_DAYS, JSON.stringify(days));
+}
+
+async function loadBookingsFor(date){
+  try{
+    const r = await storage.get(bookingsKey(date));
+    bookingsCache[date] = JSON.parse(r.value);
+  }catch(e){
+    bookingsCache[date] = {};
+  }
+}
+
+async function saveBookingsFor(date){
+  await storage.set(bookingsKey(date), JSON.stringify(bookingsCache[date]));
+}
+
+async function loadExternasFor(monthKey){
+  try{
+    const r = await storage.get(externasKey(monthKey));
+    externasCache[monthKey] = JSON.parse(r.value);
+  }catch(e){
+    externasCache[monthKey] = {};
+  }
+}
+
+async function saveExternasFor(monthKey){
+  await storage.set(externasKey(monthKey), JSON.stringify(externasCache[monthKey]));
+}
+
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function formatDayLabel(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  const weekday = d.toLocaleDateString('es-MX', { weekday:'long' });
+  const dayNum = d.toLocaleDateString('es-MX', { day:'numeric' });
+  const month = d.toLocaleDateString('es-MX', { month:'long' });
+  return { weekday, dayNum, month };
+}
+
+function nutriName(nid){
+  const n = config.nutriologos.find(x => x.id === nid);
+  return n ? n.nombre : nid;
+}
+
+function showFatalError(message){
+  document.getElementById('app').innerHTML = `<div class="empty">${message}</div>`;
+}
+
+async function init(){
+  if (!API_URL || API_URL.indexOf('PEGA_AQUI') === 0){
+    showFatalError('Esta agenda todavía no está conectada a su base de datos.<br>Falta pegar la URL del Apps Script en la constante <code>API_URL</code> dentro del archivo.');
+    return;
+  }
+
+  try{
+    await loadConfig();
+    await loadDays();
+  }catch(e){
+    showFatalError('No se pudo conectar con la base de datos.<br>Verifica tu conexión a internet y que la URL de Apps Script sea correcta y esté implementada como "Cualquier usuario".');
+    return;
+  }
+
+  try{
+    const upcoming = days.filter(d => d.date >= todayStr());
+    if (upcoming.length > 0){
+      selectedDate = upcoming[0].date;
+      await loadBookingsFor(selectedDate);
+    }
+    populateExternalNutriSelect();
+    populateNutriSelectWho();
+
+    if (rolParam === 'admin'){
+      document.getElementById('nutriToggle').style.display = 'none';
+      await promptRoleAuth('admin');
+    } else if (rolParam === 'nutriologo'){
+      document.getElementById('adminToggle').style.display = 'none';
+      await promptRoleAuth('nutri');
+    }
+
+    renderAll();
+  }catch(e){
+    showFatalError('Ocurrió un problema al cargar la agenda. Intenta recargar la página.');
+  }
+}
+
+function renderAll(){
+  renderApp();
+  renderAdmin();
+}
+
+function renderApp(){
+  const app = document.getElementById('app');
+  const upcoming = days.filter(d => d.date >= todayStr());
+
+  if (upcoming.length === 0){
+    app.innerHTML = `<div class="empty">Todavía no hay días de consulta programados.<br>Usa el panel de administración para agregar el próximo día.</div>`;
+    return;
+  }
+
+  let html = `<div class="daystrip">`;
+  upcoming.forEach(d => {
+    const lbl = formatDayLabel(d.date);
+    const active = d.date === selectedDate ? 'active' : '';
+    html += `
+      <button class="day-chip ${active}" data-date="${d.date}">
+        <div class="d1">${lbl.weekday}</div>
+        <div class="d2">${lbl.dayNum} ${lbl.month}</div>
+        <div class="d3">${d.nutriologos.length} nutriólogo(s)</div>
+      </button>`;
+  });
+  html += `</div>`;
+
+  const dayCfg = upcoming.find(d => d.date === selectedDate);
+  if (!dayCfg){
+    app.innerHTML = html + `<div class="empty">Selecciona un día para ver los horarios.</div>`;
+    attachDayStripEvents();
+    return;
+  }
+
+  const bookings = bookingsCache[selectedDate] || {};
+  html += `<div class="agenda">`;
+  dayCfg.nutriologos.forEach(nid => {
+    const nutri = config.nutriologos.find(n => n.id === nid);
+    html += `<div class="nutri-col"><h2>${nutri ? nutri.nombre : nid}</h2>`;
+    SLOT_TIMES.forEach(t => {
+      const isBreak = BREAK_TIMES.includes(t);
+      const sk = slotKeyOf(nid, t);
+      const booking = bookings[sk];
+      if (isBreak){
+        html += `<div class="slot break"><span class="time">${t}</span><span class="status">Descanso</span></div>`;
+      } else if (booking){
+        let attTag = '';
+        if (isAdmin && booking.asistencia === 'asistio') attTag = ' <span class="att-tag ok">✓ Asistió</span>';
+        if (isAdmin && booking.asistencia === 'no_asistio') attTag = ' <span class="att-tag no">✕ No asistió</span>';
+        const actionsHtml = isAdmin
+          ? `<button class="btn-cancel" data-action="reassign" data-nutri="${nid}" data-time="${t}">Reasignar</button>
+             <button class="btn-cancel" data-action="liberar" data-nutri="${nid}" data-time="${t}">Liberar</button>`
+          : `<button class="btn-cancel" data-action="cancel" data-nutri="${nid}" data-time="${t}">Cancelar</button>`;
+        html += `
+          <div class="slot busy">
+            <span class="time">${t}</span>
+            <span class="status">Ocupado<span class="who">${booking.nombre}${attTag}</span></span>
+            ${actionsHtml}
+          </div>`;
+      } else {
+        html += `
+          <div class="slot available">
+            <span class="time">${t}</span>
+            <span class="status">Disponible</span>
+            <button class="btn-book" data-action="book" data-nutri="${nid}" data-time="${t}">Reservar</button>
+          </div>`;
+      }
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  app.innerHTML = html;
+  attachDayStripEvents();
+  attachSlotEvents(dayCfg.date);
+}
+
+function attachDayStripEvents(){
+  document.querySelectorAll('.day-chip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      selectedDate = btn.dataset.date;
+      if (!bookingsCache[selectedDate]) await loadBookingsFor(selectedDate);
+      renderApp();
+    });
+  });
+}
+
+function attachSlotEvents(date){
+  document.querySelectorAll('[data-action="book"]').forEach(btn => {
+    btn.addEventListener('click', () => openBookingModal(date, btn.dataset.nutri, btn.dataset.time));
+  });
+  document.querySelectorAll('[data-action="cancel"]').forEach(btn => {
+    btn.addEventListener('click', () => openCancelModal(date, btn.dataset.nutri, btn.dataset.time));
+  });
+  document.querySelectorAll('[data-action="reassign"]').forEach(btn => {
+    btn.addEventListener('click', () => openReassignModal(date, btn.dataset.nutri, btn.dataset.time));
+  });
+  document.querySelectorAll('[data-action="liberar"]').forEach(btn => {
+    btn.addEventListener('click', () => liberarSlot(date, btn.dataset.nutri, btn.dataset.time));
+  });
+}
+
+async function liberarSlot(date, nid, time){
+  if (!confirm('¿Liberar este horario? Se eliminará la reserva actual.')) return;
+  const sk = slotKeyOf(nid, time);
+  if (bookingsCache[date]) delete bookingsCache[date][sk];
+  await saveBookingsFor(date);
+  renderApp();
+}
+
+function openBookingModal(date, nid, time){
+  const lbl = formatDayLabel(date);
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay" id="ov">
+      <div class="modal">
+        <h3>Reservar cita</h3>
+        <div class="meta">${nutriName(nid)} · ${lbl.weekday} ${lbl.dayNum} de ${lbl.month} · ${time}</div>
+        <div class="field"><label>Nombre completo</label><input id="fName" type="text" placeholder="Tu nombre"></div>
+        <div class="field"><label>Área / departamento</label><input id="fArea" type="text" placeholder="Ej. Sistemas"></div>
+        <div class="field"><label>Correo electrónico</label><input id="fCorreo" type="email" placeholder="tucorreo@empresa.com"></div>
+        <div class="error-text" id="bErr">Completa todos los campos con un correo válido.</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="bCancel">Cancelar</button>
+          <button class="btn-confirm" id="bConfirm">Confirmar reserva</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('bCancel').addEventListener('click', closeModal);
+  document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeModal(); });
+  document.getElementById('bConfirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('fName').value.trim();
+    const area = document.getElementById('fArea').value.trim();
+    const correo = document.getElementById('fCorreo').value.trim();
+    const validCorreo = /\S+@\S+\.\S+/.test(correo);
+    if (!nombre || !area || !validCorreo){
+      document.getElementById('bErr').style.display = 'block';
+      return;
+    }
+    if (!bookingsCache[date]) bookingsCache[date] = {};
+    const sk = slotKeyOf(nid, time);
+    if (bookingsCache[date][sk]){
+      document.getElementById('bErr').textContent = 'Este horario acaba de ser reservado por alguien más.';
+      document.getElementById('bErr').style.display = 'block';
+      await loadBookingsFor(date);
+      renderApp();
+      return;
+    }
+    bookingsCache[date][sk] = { nombre, area, correo, asistencia: 'pendiente' };
+    try{
+      await saveBookingsFor(date);
+      closeModal();
+      renderApp();
+    }catch(e){
+      document.getElementById('bErr').textContent = 'No se pudo guardar la reserva. Intenta de nuevo.';
+      document.getElementById('bErr').style.display = 'block';
+    }
+  });
+}
+
+function openCancelModal(date, nid, time){
+  const lbl = formatDayLabel(date);
+  const sk = slotKeyOf(nid, time);
+  const existing = (bookingsCache[date] || {})[sk];
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay" id="ov">
+      <div class="modal">
+        <h3>Cancelar cita</h3>
+        <div class="meta">${nutriName(nid)} · ${lbl.weekday} ${lbl.dayNum} de ${lbl.month} · ${time}</div>
+        <div class="field"><label>Confirma el correo con el que reservaste</label><input id="fCorreoCancel" type="email" placeholder="tucorreo@empresa.com"></div>
+        <div class="error-text" id="cErr">El correo no coincide con esta reserva.</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="cBack">Regresar</button>
+          <button class="btn-confirm" id="cConfirm">Cancelar cita</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cBack').addEventListener('click', closeModal);
+  document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeModal(); });
+  document.getElementById('cConfirm').addEventListener('click', async () => {
+    const correo = document.getElementById('fCorreoCancel').value.trim().toLowerCase();
+    if (!existing || correo !== existing.correo.toLowerCase()){
+      document.getElementById('cErr').style.display = 'block';
+      return;
+    }
+    delete bookingsCache[date][sk];
+    try{
+      await saveBookingsFor(date);
+      closeModal();
+      renderApp();
+    }catch(e){
+      document.getElementById('cErr').textContent = 'No se pudo cancelar. Intenta de nuevo.';
+      document.getElementById('cErr').style.display = 'block';
+    }
+  });
+}
+
+function openReassignModal(date, nid, time){
+  const lbl = formatDayLabel(date);
+  const sk = slotKeyOf(nid, time);
+  const existing = (bookingsCache[date] || {})[sk];
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay" id="ov">
+      <div class="modal">
+        <h3>Reasignar cita</h3>
+        <div class="meta">${nutriName(nid)} · ${lbl.weekday} ${lbl.dayNum} de ${lbl.month} · ${time}</div>
+        <div class="meta">Ocupado actualmente por: ${existing ? existing.nombre : '—'}</div>
+        <div class="field"><label>Nuevo nombre completo</label><input id="fName" type="text" placeholder="Nombre"></div>
+        <div class="field"><label>Área / departamento</label><input id="fArea" type="text" placeholder="Ej. Sistemas"></div>
+        <div class="field"><label>Correo electrónico</label><input id="fCorreo" type="email" placeholder="correo@empresa.com"></div>
+        <div class="error-text" id="bErr">Completa todos los campos con un correo válido.</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="bCancel">Cancelar</button>
+          <button class="btn-confirm" id="bConfirm">Guardar reasignación</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('bCancel').addEventListener('click', closeModal);
+  document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov') closeModal(); });
+  document.getElementById('bConfirm').addEventListener('click', async () => {
+    const nombre = document.getElementById('fName').value.trim();
+    const area = document.getElementById('fArea').value.trim();
+    const correo = document.getElementById('fCorreo').value.trim();
+    const validCorreo = /\S+@\S+\.\S+/.test(correo);
+    if (!nombre || !area || !validCorreo){
+      document.getElementById('bErr').style.display = 'block';
+      return;
+    }
+    if (!bookingsCache[date]) bookingsCache[date] = {};
+    bookingsCache[date][sk] = { nombre, area, correo, asistencia: 'pendiente' };
+    try{
+      await saveBookingsFor(date);
+      closeModal();
+      renderApp();
+    }catch(e){
+      document.getElementById('bErr').textContent = 'No se pudo guardar. Intenta de nuevo.';
+      document.getElementById('bErr').style.display = 'block';
+    }
+  });
+}
+
+function closeModal(){
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+// ---- Consultorio externo (público) ----
+function populateExternalNutriSelect(){
+  const sel = document.getElementById('extNutri');
+  sel.innerHTML = config.nutriologos.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+}
+
+document.getElementById('extSubmit').addEventListener('click', async () => {
+  const nid = document.getElementById('extNutri').value;
+  const fecha = document.getElementById('extFecha').value;
+  const hora = document.getElementById('extHora').value;
+  const nombre = document.getElementById('extNombre').value.trim();
+  const area = document.getElementById('extArea').value.trim();
+  const correo = document.getElementById('extCorreo').value.trim();
+  const errEl = document.getElementById('extErr');
+  const okEl = document.getElementById('extOk');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+  const validCorreo = /\S+@\S+\.\S+/.test(correo);
+  if (!nid || !fecha || !hora || !nombre || !area || !validCorreo){
+    errEl.textContent = 'Completa todos los campos con un correo válido.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const monthKey = fecha.slice(0,7);
+  if (!externasCache[monthKey]) await loadExternasFor(monthKey);
+  const id = `${fecha}_${hora.replace(':','')}_${nid}`;
+  if (externasCache[monthKey][id]){
+    errEl.textContent = 'Ya hay una cita registrada con ese nutriólogo en esa fecha y hora. Verifica el horario.';
+    errEl.style.display = 'block';
+    return;
+  }
+  externasCache[monthKey][id] = { fecha, hora, nutriologoId: nid, nombre, area, correo, asistencia: 'pendiente' };
+  try{
+    await saveExternasFor(monthKey);
+    okEl.style.display = 'block';
+    document.getElementById('extFecha').value = '';
+    document.getElementById('extHora').value = '';
+    document.getElementById('extNombre').value = '';
+    document.getElementById('extArea').value = '';
+    document.getElementById('extCorreo').value = '';
+  }catch(e){
+    errEl.textContent = 'No se pudo registrar. Intenta de nuevo.';
+    errEl.style.display = 'block';
+  }
+});
+
+// ---- Autenticación por rol ----
+async function sha256Hex(str){
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function promptRoleAuth(role){
+  const root = document.getElementById('modalRoot');
+  const hashField = role === 'admin' ? 'adminPasswordHash' : 'nutriPasswordHash';
+  const hasPassword = !!(config[hashField]);
+  const roleLabel = role === 'admin' ? 'administrador' : 'nutriólogos';
+  root.innerHTML = `
+    <div class="overlay" id="ov">
+      <div class="modal">
+        <h3>${hasPassword ? `Acceso de ${roleLabel}` : `Crear contraseña de ${roleLabel}`}</h3>
+        <div class="meta">${hasPassword ? 'Ingresa la contraseña para continuar.' : 'Es la primera vez que se abre esta sección. Define una contraseña — se guarda cifrada, nunca en texto plano.'}</div>
+        <div class="field"><label>Contraseña</label><input id="authPass" type="password"></div>
+        ${hasPassword ? '' : '<div class="field"><label>Confirmar contraseña</label><input id="authPass2" type="password"></div>'}
+        <div class="error-text" id="authErr">${hasPassword ? 'Contraseña incorrecta.' : 'Las contraseñas deben coincidir y no estar vacías.'}</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="authCancel">Cancelar</button>
+          <button class="btn-confirm" id="authConfirm">${hasPassword ? 'Entrar' : 'Guardar contraseña'}</button>
+        </div>
+      </div>
+    </div>`;
+  return new Promise((resolve) => {
+    document.getElementById('authCancel').addEventListener('click', () => { closeModal(); resolve(false); });
+    document.getElementById('ov').addEventListener('click', (e) => { if (e.target.id === 'ov'){ closeModal(); resolve(false); } });
+    document.getElementById('authConfirm').addEventListener('click', async () => {
+      const pass = document.getElementById('authPass').value;
+      if (hasPassword){
+        const hash = await sha256Hex(pass);
+        if (hash !== config[hashField]){
+          document.getElementById('authErr').style.display = 'block';
+          return;
+        }
+      } else {
+        const pass2 = document.getElementById('authPass2').value;
+        if (!pass || pass !== pass2){
+          document.getElementById('authErr').style.display = 'block';
+          return;
+        }
+        config[hashField] = await sha256Hex(pass);
+        await saveConfig();
+      }
+      if (role === 'admin'){ isAdmin = true; document.getElementById('adminPanel').classList.add('open'); }
+      else { isNutri = true; document.getElementById('nutriPanel').classList.add('open'); renderNutriPanel(); }
+      closeModal();
+      renderApp();
+      resolve(true);
+    });
+  });
+}
+
+document.getElementById('adminToggle').addEventListener('click', async () => {
+  if (isAdmin){
+    document.getElementById('adminPanel').classList.toggle('open');
+    return;
+  }
+  await promptRoleAuth('admin');
+});
+
+document.getElementById('nutriToggle').addEventListener('click', async () => {
+  if (isNutri){
+    document.getElementById('nutriPanel').classList.toggle('open');
+    return;
+  }
+  await promptRoleAuth('nutri');
+});
+
+document.getElementById('changeAdminPassBtn').addEventListener('click', async () => {
+  const p1 = document.getElementById('newAdminPass').value;
+  const p2 = document.getElementById('newAdminPass2').value;
+  const msg = document.getElementById('passChangeMsg');
+  if (!p1 || p1 !== p2){
+    msg.textContent = 'Las contraseñas deben coincidir y no estar vacías.';
+    msg.style.color = 'var(--busy)';
+    msg.style.display = 'block';
+    return;
+  }
+  try{
+    config.adminPasswordHash = await sha256Hex(p1);
+    await saveConfig();
+    document.getElementById('newAdminPass').value = '';
+    document.getElementById('newAdminPass2').value = '';
+    msg.style.color = 'var(--ok)';
+    msg.textContent = 'Contraseña de administrador actualizada.';
+    msg.style.display = 'block';
+  }catch(e){
+    msg.style.color = 'var(--busy)';
+    msg.textContent = 'No se pudo guardar. Revisa la conexión con la base de datos.';
+    msg.style.display = 'block';
+  }
+});
+
+document.getElementById('changeNutriPassBtn').addEventListener('click', async () => {
+  const p1 = document.getElementById('newNutriPass').value;
+  const p2 = document.getElementById('newNutriPass2').value;
+  const msg = document.getElementById('passChangeMsg');
+  if (!p1 || p1 !== p2){
+    msg.textContent = 'Las contraseñas deben coincidir y no estar vacías.';
+    msg.style.color = 'var(--busy)';
+    msg.style.display = 'block';
+    return;
+  }
+  try{
+    config.nutriPasswordHash = await sha256Hex(p1);
+    await saveConfig();
+    document.getElementById('newNutriPass').value = '';
+    document.getElementById('newNutriPass2').value = '';
+    msg.style.color = 'var(--ok)';
+    msg.textContent = 'Contraseña de nutriólogos actualizada.';
+    msg.style.display = 'block';
+  }catch(e){
+    msg.style.color = 'var(--busy)';
+    msg.textContent = 'No se pudo guardar. Revisa la conexión con la base de datos.';
+    msg.style.display = 'block';
+  }
+});
+
+// ---- Vista de nutriólogos ----
+function populateNutriSelectWho(){
+  const sel = document.getElementById('nutriSelectWho');
+  sel.innerHTML = config.nutriologos.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+  document.getElementById('nutriSelectDate').value = todayStr();
+}
+
+document.getElementById('nutriSelectWho').addEventListener('change', renderNutriPanel);
+document.getElementById('nutriSelectDate').addEventListener('change', renderNutriPanel);
+
+async function renderNutriPanel(){
+  if (!isNutri) return;
+  const area = document.getElementById('nutriListArea');
+  area.innerHTML = `<div class="loading">Cargando…</div>`;
+  const nid = document.getElementById('nutriSelectWho').value;
+  const date = document.getElementById('nutriSelectDate').value;
+  if (!date){ area.innerHTML = ''; return; }
+
+  const items = [];
+
+  const dayCfg = days.find(d => d.date === date && d.nutriologos.includes(nid));
+  if (dayCfg){
+    if (!bookingsCache[date]) await loadBookingsFor(date);
+    const bookings = bookingsCache[date] || {};
+    SLOT_TIMES.forEach(t => {
+      if (BREAK_TIMES.includes(t)) return;
+      const sk = slotKeyOf(nid, t);
+      const b = bookings[sk];
+      if (b) items.push({ hora: t, ...b, modalidad: 'Corporativo', sourceType: 'corp', sk, date });
+    });
+  }
+
+  const monthKey = date.slice(0,7);
+  if (!externasCache[monthKey]) await loadExternasFor(monthKey);
+  Object.entries(externasCache[monthKey] || {}).forEach(([id, e]) => {
+    if (e.fecha === date && e.nutriologoId === nid){
+      items.push({ hora: e.hora, nombre: e.nombre, area: e.area, correo: e.correo, asistencia: e.asistencia, modalidad: 'Consultorio externo', sourceType: 'ext', id, monthKey });
+    }
+  });
+
+  items.sort((a,b) => a.hora.localeCompare(b.hora));
+
+  if (items.length === 0){
+    area.innerHTML = `<div class="empty">No hay citas para esta fecha con este nutriólogo.</div>`;
+    return;
+  }
+
+  area.innerHTML = items.map((it, idx) => `
+    <div class="nutri-list-item">
+      <div class="who-block">
+        <span class="nm">${it.hora} · ${it.nombre}</span>
+        <span class="tag">${it.modalidad}</span>
+        <div class="sub2">${it.area} · ${it.correo}</div>
+      </div>
+      <div class="att-buttons">
+        <button class="btn-att ${it.asistencia === 'asistio' ? 'active-ok' : ''}" data-idx="${idx}" data-status="asistio">Asistió</button>
+        <button class="btn-att ${it.asistencia === 'no_asistio' ? 'active-no' : ''}" data-idx="${idx}" data-status="no_asistio">No asistió</button>
+      </div>
+    </div>`).join('');
+
+  area.querySelectorAll('.btn-att').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const it = items[parseInt(btn.dataset.idx, 10)];
+      const status = btn.dataset.status;
+      if (it.sourceType === 'corp'){
+        bookingsCache[it.date][it.sk].asistencia = status;
+        await saveBookingsFor(it.date);
+      } else {
+        externasCache[it.monthKey][it.id].asistencia = status;
+        await saveExternasFor(it.monthKey);
+      }
+      renderNutriPanel();
+    });
+  });
+}
+
+// ---- Admin: nutriólogos y días ----
+function renderAdmin(){
+  const nutriRows = document.getElementById('nutriEditRows');
+  nutriRows.innerHTML = config.nutriologos.map(n => `
+    <div class="admin-row">
+      <input type="text" data-nid="${n.id}" class="nutriNameInput" value="${n.nombre}">
+      <button class="mini-btn" data-save-nid="${n.id}">Guardar nombre</button>
+    </div>`).join('');
+  nutriRows.querySelectorAll('[data-save-nid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nid = btn.dataset.saveNid;
+      const input = nutriRows.querySelector(`.nutriNameInput[data-nid="${nid}"]`);
+      const n = config.nutriologos.find(x => x.id === nid);
+      const previous = n.nombre;
+      n.nombre = input.value.trim() || n.nombre;
+      try{
+        await saveConfig();
+        populateExternalNutriSelect();
+        populateNutriSelectWho();
+        renderApp();
+        btn.textContent = 'Guardado ✓';
+        setTimeout(() => { btn.textContent = 'Guardar nombre'; }, 1500);
+      }catch(e){
+        n.nombre = previous;
+        btn.textContent = 'Error, reintenta';
+        setTimeout(() => { btn.textContent = 'Guardar nombre'; }, 2000);
+      }
+    });
+  });
+
+  const checksSpan = document.getElementById('newDayChecks');
+  checksSpan.innerHTML = config.nutriologos.map(n => `
+    <label class="chk"><input type="checkbox" class="newDayNutri" value="${n.id}" checked> ${n.nombre}</label>
+  `).join('');
+
+  const listDiv = document.getElementById('dayListAdmin');
+  if (days.length === 0){
+    listDiv.innerHTML = `<div style="color:var(--ink-soft); font-size:0.85rem;">Sin días programados todavía.</div>`;
+  } else {
+    listDiv.innerHTML = days.map(d => {
+      const lbl = formatDayLabel(d.date);
+      const names = d.nutriologos.map(nutriName).join(', ');
+      return `
+        <div class="day-list-item">
+          <span>${lbl.weekday} ${lbl.dayNum} de ${lbl.month} — ${names}</span>
+          <button class="mini-btn danger" data-remove-day="${d.date}">Quitar</button>
+        </div>`;
+    }).join('');
+    listDiv.querySelectorAll('[data-remove-day]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const date = btn.dataset.removeDay;
+        days = days.filter(d => d.date !== date);
+        await saveDays();
+        if (selectedDate === date) selectedDate = null;
+        renderAll();
+      });
+    });
+  }
+}
+
+document.getElementById('addDayBtn').addEventListener('click', async () => {
+  const dateInput = document.getElementById('newDayDate');
+  const date = dateInput.value;
+  if (!date) return;
+  const checked = Array.from(document.querySelectorAll('.newDayNutri:checked')).map(c => c.value);
+  if (checked.length === 0) return;
+  const existingIdx = days.findIndex(d => d.date === date);
+  if (existingIdx >= 0){
+    days[existingIdx].nutriologos = checked;
+  } else {
+    days.push({ date, nutriologos: checked });
+  }
+  await saveDays();
+  dateInput.value = '';
+  if (!selectedDate) {
+    selectedDate = date;
+    await loadBookingsFor(date);
+  }
+  renderAll();
+});
+
+// ---- Exportar CSV ----
+function monthKeysBetween(desde, hasta){
+  const keys = [];
+  let [y, m] = desde.slice(0,7).split('-').map(Number);
+  const [yEnd, mEnd] = hasta.slice(0,7).split('-').map(Number);
+  while (y < yEnd || (y === yEnd && m <= mEnd)){
+    keys.push(`${y}-${String(m).padStart(2,'0')}`);
+    m += 1;
+    if (m === 13){ m = 1; y += 1; }
+  }
+  return keys;
+}
+
+function csvField(v){
+  const s = String(v == null ? '' : v);
+  return `"${s.replace(/"/g,'""')}"`;
+}
+
+function attLabel(a){
+  if (a === 'asistio') return 'Asistió';
+  if (a === 'no_asistio') return 'No asistió';
+  return 'Pendiente';
+}
+
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const from = document.getElementById('exportFrom').value;
+  const to = document.getElementById('exportTo').value;
+  const msg = document.getElementById('exportMsg');
+  msg.style.display = 'none';
+  if (!from || !to || from > to){
+    msg.textContent = 'Selecciona un rango de fechas válido.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  const rows = [];
+
+  const daysInRange = days.filter(d => d.date >= from && d.date <= to);
+  for (const d of daysInRange){
+    if (!bookingsCache[d.date]) await loadBookingsFor(d.date);
+    const bookings = bookingsCache[d.date] || {};
+    d.nutriologos.forEach(nid => {
+      SLOT_TIMES.forEach(t => {
+        if (BREAK_TIMES.includes(t)) return;
+        const sk = slotKeyOf(nid, t);
+        const b = bookings[sk];
+        if (b) rows.push([d.date, t, 'Corporativo', nutriName(nid), b.nombre, b.area, b.correo, attLabel(b.asistencia)]);
+      });
+    });
+  }
+
+  const months = monthKeysBetween(from, to);
+  for (const mk of months){
+    if (!externasCache[mk]) await loadExternasFor(mk);
+    Object.values(externasCache[mk] || {}).forEach(e => {
+      if (e.fecha >= from && e.fecha <= to){
+        rows.push([e.fecha, e.hora, 'Consultorio externo', nutriName(e.nutriologoId), e.nombre, e.area, e.correo, attLabel(e.asistencia)]);
+      }
+    });
+  }
+
+  if (rows.length === 0){
+    msg.textContent = 'No hay citas registradas en ese rango de fechas.';
+    msg.style.display = 'block';
+    return;
+  }
+
+  rows.sort((a,b) => (a[0]+a[1]).localeCompare(b[0]+b[1]));
+
+  const header = ['Fecha','Hora','Modalidad','Nutriólogo','Nombre','Área','Correo','Asistencia'];
+  const csv = '\uFEFF' + [header, ...rows].map(r => r.map(csvField).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `agenda-nutricion_${from}_a_${to}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+init();
+</script>
+</body>
+</html>
